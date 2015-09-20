@@ -1,4 +1,4 @@
-* Yet Another Tor-browser launcher
+# Yet Another Tor-browser launcher
 
 This is still in *work in progress* status.
 
@@ -9,7 +9,7 @@ and **lots** and **lots** of external libraries. Since Debian wants to [port](ht
 everything to Python 3, I decided to create a another project written in Python 3 and try to not depend on any
 external library (very hard sometimes) - currently, I am only using **python-gnupg's** external library and **python-progressbar** (optional).
 
-* TODO's
+## TODO's
 1. Verify signatures [currently in progress].
    1. Verify sha256sum.
 2. Implement browser launcher.
@@ -17,6 +17,6 @@ external library (very hard sometimes) - currently, I am only using **python-gnu
 4. Add mirrors and try theses when one doesn't work.
 5. Perhaps some code refactor?
 
-* Contact
+### Contact
 PGP fingerprint: FFBD A6F3 8BE2 E849 C46C  AD3B 7320 D3F4 FC1E E91B
 Email: benmezger@riseup.net
