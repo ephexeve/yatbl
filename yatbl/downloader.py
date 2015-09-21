@@ -5,6 +5,9 @@ except: # python < 3
 
 import json
 import os
+from time import sleep
+import subprocess
+import hashlib
 
 try:
     from progressbar import ProgressBar, Percentage, Bar, RotatingMarker, \
@@ -13,8 +16,6 @@ try:
 except:
     has_bar = False
 
-import gnupg
-    
 from . import utils
 from . import config as tbb_config
 
@@ -25,7 +26,6 @@ class Downloader(object):
         self.version = None # if not, get the latest
         self.arch = utils.get_architecture()
         self.platform = utils.get_platform()
-        self.gpg = gnupg.GPG()
         
         if has_bar:
             widgets = ['Tor Browser: ', Percentage(), ' ', Bar(marker=RotatingMarker()),\
@@ -40,7 +40,7 @@ class Downloader(object):
         
         return recommended
 
-    def download_tar(self):
+    def download_files(self):
         version = self.version.split("-")[0]
         url = tbb_config.tor_browser_mirror.format(version)
         url_sig = tbb_config.tor_browser_mirror.format(version)
@@ -48,58 +48,78 @@ class Downloader(object):
         if self.platform == "Linux":
             if self.arch == "linux32":
                 url = url + tbb_config.tor_browser_linux32.format(version)
-                url_sig = url_sig + tbb_config.tor_browser_linux32_sig.format(version)
             else:
                 url = url + tbb_config.tor_browser_linux64.format(version)
-                url_sig = url_sig + tbb_config.tor_browser_linux64_sig.format(version)
         else: # macos
             url = url + tbb_config.tor_browser_macos.format(version)
-            url_sig = url_sig + tbb_config.tor_browser_macos_sig.format(version)
 
+        shasum_url = url + tbb_config.tor_sha_file
+        shasumsig_url = url + tbb_config.tor_shasig_file
+        
         if self.progressbar:
             print("Downloading Tor browser")
-            tor_bb_tar = urllib.urlretrieve(url, reporthook=self.__download_progress)
+
+            tor_tar = urllib.urlretrieve(url, reporthook=self.__download_progress)
+            self.progressbar.finish()
+
+            print("Downloading signature")
+            tor_shasum = urllib.urlretrieve(shasum_asc_url, reporthook=self.__download_progress)
             self.progressbar.finish()
             
-            print("Downloading signature")
-            tor_bb_sig = urllib.urlretrieve(url_sig, reporthook=self.__download_progress)
-            self.progressbar.finish()
+            tor_shasig = urllib.urlretrieve(shasum_text_url, reporthook=self.__download_progress)
+            self.progressbar.finish()            
         else:
             print("Downloading Tor browser, please wait.")
-            tor_bb_tar = urllib.urlretrieve(url)
+            tor_tar = urllib.urlretrieve(url)
 
             print("Downloading signature, please wait.")
-            tor_bb_tar = urllib.urlretrieve(url)
+            tor_shasum = urllib.urlretrieve(shasum_asc_url)
+            tor_shasig = urllib.urlretrieve(shasum_text_url)
 
-        downloaded_tar_path = tor_bb_tar[0]
-        downloaded_sig_path = tor_bb_sig[0]        
+        tar_path = tor_tar[0]
+        shasum = tor_asc[0]
+        shasum_sig = tor_text[0]
 
-        verified = self.verify(downloaded_tar_path, downloaded_sig_path)
-        if not verified:
-            print("Could not verify signature!")
-            print("Tryint to ")
-            print("This could be 2 things:")
-            print("1. Someone changed the source code")
-            print("2. Something went internaly wrong.")
-            print("Check torproject.org to see if there are any news.")
-            sys.exit(1)
-        else:
-            print("File verified!")
+        # will exit it verification fails.
+        # todo: do something if verification = false
+        self.verify(tar_path, shasum, shasum_sig)
 
+    def extract(self, path):
+        # todo
+        pass
+        
     def import_gnupg(self):
-        pub_key = self.gpg.import_keys(open(tbb_config.tor_browser_pub_gpg).read())
-        if pub_key.imported:
-            print("New gpg key imported")
-            print("Total imported:", pub_key.imported)
-            print("GPG fingerprint:", pub_key.fingerprint[0])
-            print("For extra security: Make sure the fingerprint matched the one from torproject.org")
-            return True
-        return False
+        print("Importing Tor's keys")
+        homedir = os.path.join(os.path.expanduser("~/"), ".gnupg")
 
-    # todo, verify sha256sum too
-    def verify(self, data, sig):
-        self.import_gnupg()
-        pass # todo, verify file
+        subprocess.Popen(['/usr/bin/gpg', '--quiet', '--homedir', homedir, \
+                          '--import', tbb_config.tor_browser_pub_gpg]).wait()
+        
+    def verify(self, data, shafile, shasig):
+        tar_name = data.split("/")[-1]
+        # some parts of this code has been copied from
+        # https://github.com/micahflee/torbrowser-launcher/blob/master/torbrowser_launcher/launcher.py#L543
+        verified = False
+        # check the sha256 file's sig, and also take the sha256 of the tarball and compare
+        FNULL = open(os.devnull, 'w')
+        gnupg_path = os.path.join(os.path.expanduser("$HOME"), ".gnupg")
+        
+        process = subprocess.Popen(['/usr/bin/gpg', '--homedir', gnupg_path,\
+                                    '--verify', shasig],\
+                              stdout=FNULL, stderr=subprocess.STDOUT)
+        while process.poll() is None:
+            time.sleep(0.01)
+            
+        if process.returncode == 0:
+            tarball_sha256 = hashlib.sha256(open(data, "r").read()).hexdigest()
+            for line in open(shafile, "r").readlines():
+                if tarball_sha256.lower() in line.lower() and tar_name in line:
+                    verified = True
+
+        if not verified: # todo, how to report this?
+            print("File was not verified. Exiting.")
+            exit(1)
+        return verified
         
     def __download_progress(self, count, block_size, total_size):
         if self.progressbar.maxval is None:
@@ -111,4 +131,4 @@ class Downloader(object):
         recommended = self.get_recommended(utils.get_platform())
         self.version  = utils.prompt_version(recommended)
         self.path = utils.prompt_directory()
-        self.download_tar()
+        self.download_files()

@@ -7,16 +7,17 @@ tor_browser_mirror = "https://dist.torproject.org/torbrowser/{0}/"
 # packages
 # linux 32
 tor_browser_linux32 = "tor-browser-linux32-{0}_en-US.tar.xz" # {0} = version
-tor_browser_linux32_sig = "tor-browser-linux32-{0}_en-US.tar.xz.asc" # {0} = version
 
 # linux 64
 tor_browser_linux64 = "tor-browser-linux64-{0}_en-US.tar.xz" # {0} = version
-tor_browser_linux64_sig = "tor-browser-linux64-{0}_en-US.tar.xz.asc" # {0} = version
 
 # macos 64
 tor_browser_macos = "TorBrowser-{0}-osx64_en-US.dmg" # {0} version
-tor_browser_macos_sig = "TorBrowser-{0}-osx64_en-US.dmg.asc" # {0} version
 # end packages
+
+# signing
+tor_sha_file = "sha256sums-unsigned-build.txt"
+tor_shasig_file = "sha256sums-unsigned-build.txt.asc"
 
 # sys
 tor_browser_location = os.path.join(os.getenv("HOME"), ".tor-browser/")
