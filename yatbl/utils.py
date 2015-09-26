@@ -3,6 +3,8 @@ import platform
 from os import path as ospath
 from os import makedirs
 from os import uname
+from os import listdir
+from os.path import isdir
 import re
 
 from sys import exit
@@ -55,15 +57,33 @@ def get_latest(version_list):
             latest = tmp
             latest_real = version
     return version
-        
+
+def check_installed(path=config.tor_browser_path):
+    if not os.path.exists(path):
+        print("Path doesn't exist")
+    files = listdir(path)
+    installed_versions = []
+
+    for f in files:
+        if isdir(f) and "tor-browser" in f:
+            installed_versions.append(f)
+    return installed_versions
+    
+
 def prompt_version(recommeded_list):
     if len(recommeded_list) <= 0:
         print("Something went wrong")
         exit(1)
-        
+
+    installed_indexes = []
+    installed_versions = check_installed()
     for i, r in enumerate(recommeded_list):
+        for v in installed_versions:
+            if (r in v):
+                installed_indexed.append(i)
+                print("%d -> %s [installed]" % (i, r))
         print("%d -> %s" % (i, r))
-        
+    
     while True:
         version = input("Version to install (blank for lastest stable): ")
         try:
@@ -72,6 +92,8 @@ def prompt_version(recommeded_list):
                 print("Auto selected version:", version)
                 break
             version = int(version)
+            if version in installed_versions:
+                print("Version already installed") # todo, enable reinstall
             if version <= len(recommeded_list) and version > -1:
                 break
             else:
@@ -84,7 +106,7 @@ def prompt_directory():
     while True:
         path = input("Install path (blank for defaul): ")
         if path == "":
-            path = None
+            path = config.tor_browser_path
             break
         else:
             if not os.path.exists(path):

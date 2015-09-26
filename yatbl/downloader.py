@@ -5,9 +5,11 @@ except: # python < 3
 
 import json
 import os
+import shutil
 from time import sleep
 import subprocess
 import hashlib
+import tarfile
 
 try:
     from progressbar import ProgressBar, Percentage, Bar, RotatingMarker, \
@@ -36,6 +38,9 @@ class Downloader(object):
             
     def get_recommended(self, os):
         con = urllib.urlopen(tbb_config.tor_browser_recommended).read()
+        if con is None:
+            print("Apparently %s is out of date." % tbb_config.tor_browser_recommended)
+            exit(1)
         recommended = [i for i in json.loads(con.decode()) if os in i] # remove un-needed sys's
         
         return recommended
@@ -63,30 +68,31 @@ class Downloader(object):
             self.progressbar.finish()
 
             print("Downloading signature")
-            tor_shasum = urllib.urlretrieve(shasum_asc_url, reporthook=self.__download_progress)
+            tor_shasum = urllib.urlretrieve(shasum_url, reporthook=self.__download_progress)
             self.progressbar.finish()
-            
-            tor_shasig = urllib.urlretrieve(shasum_text_url, reporthook=self.__download_progress)
+            tor_shasig = urrlib.urlretrieve(shasumsig_url, reporthook=self.__download_progress)
             self.progressbar.finish()            
         else:
             print("Downloading Tor browser, please wait.")
             tor_tar = urllib.urlretrieve(url)
 
             print("Downloading signature, please wait.")
-            tor_shasum = urllib.urlretrieve(shasum_asc_url)
-            tor_shasig = urllib.urlretrieve(shasum_text_url)
+            tor_shasum = urllib.urlretrieve(shasum_url)
+            tor_shasig = urllib.urlretrieve(shasumsig_url)
 
         tar_path = tor_tar[0]
-        shasum = tor_asc[0]
-        shasum_sig = tor_text[0]
+        shasum = tor_shasum[0]
+        shasum_sig = tor_shasig[0]
 
         # will exit it verification fails.
         # todo: do something if verification = false
         self.verify(tar_path, shasum, shasum_sig)
+        self.extract(tar_path, self.version)
 
-    def extract(self, path):
-        # todo
-        pass
+    def extract(self, path, version):
+        print("Extracting..")
+        with tarfile.open(path) as tar:
+            f.extract(os.path.join(self.path, "tor-browser-" + version))
         
     def import_gnupg(self):
         print("Importing Tor's keys")
@@ -120,7 +126,7 @@ class Downloader(object):
             print("File was not verified. Exiting.")
             exit(1)
         return verified
-        
+
     def __download_progress(self, count, block_size, total_size):
         if self.progressbar.maxval is None:
             self.progressbar.maxval = total_size

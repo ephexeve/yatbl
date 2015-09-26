@@ -27,3 +27,5 @@ file_version = "current_version"
 
 # gpg
 tor_browser_pub_gpg = os.path.join(os.path.abspath("."), "share/torbrowser.pub")
+
+tor_browser_path = os.path.join(os.path.abspath("$HOME"), ".tor-browser")
